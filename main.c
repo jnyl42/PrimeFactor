@@ -31,22 +31,22 @@ unsigned long long * generatePrimes(long double max) {
 
     printf("Initializing sieve array... ");
     start = omp_get_wtime();
-    int * sieveArray = (int *)malloc(sieveSize*sizeof(int));
+    bool * sieveArray = (bool *)malloc(sieveSize*sizeof(bool));
     end = omp_get_wtime();
     printf("Done (%lf s)\n", end-start);
 
     printf("[OMP] Setting initial values... ");
     start = omp_get_wtime();
     //mark 0 and 1 as not prime
-    sieveArray[0] = 1;
-    sieveArray[1] = 1;
+    sieveArray[0] = false;
+    sieveArray[1] = false;
     #pragma omp parallel  //using OMP to fill the array for speed (not really effective)
     {
         int tid = omp_get_thread_num();
         int nthreads = omp_get_num_threads();
 
         for (int i = tid+2; i < sieveSize; i+=nthreads) {
-            sieveArray[i] = 0;
+            sieveArray[i] = true;
         }
     }
     end = omp_get_wtime();
@@ -56,15 +56,15 @@ unsigned long long * generatePrimes(long double max) {
     start = omp_get_wtime();
     //for every index < sqrt(sieveSize)
     for (unsigned long long i = 2; (i < sqrtl(sieveSize)); i++) {
-        //if value is 0 for prime
-        if (sieveArray[i] == 0) {
-            //use omp to mark factors of prime for speed (not really effective)
+        //if value is prime [true]
+        if (sieveArray[i] == true) {
+            //use omp to mark factors as non-prime [false] for speed (not really effective)
             #pragma omp parallel
             {
                 int tid = omp_get_thread_num();
                 int nthreads = omp_get_num_threads();
                 for (unsigned long long j = (unsigned long long) tid + 2; (i * j) < sieveSize; j+=nthreads) {
-                    sieveArray[i * j] = 1;
+                    sieveArray[i * j] = false;
                 }
             }
         }
@@ -77,7 +77,7 @@ unsigned long long * generatePrimes(long double max) {
     //count primes for output array size
     unsigned long long count = 0;
     for (unsigned long long i = 2; i < sieveSize; i++) {
-        if (sieveArray[i] == 0) {
+        if (sieveArray[i] == true) {
             count++;
         }
     }
@@ -91,7 +91,7 @@ unsigned long long * generatePrimes(long double max) {
     count = 0;
     //add primes to output array
     for (unsigned long long i = 2; i < sieveSize; i++) {
-        if (sieveArray[i] == 0) {
+        if (sieveArray[i] == true) {
             output[count] = i;
             count++;
         }
