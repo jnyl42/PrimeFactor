@@ -83,15 +83,28 @@ int main(int argc, char** argv) {
     //check each prime against product
     printf("Attempting to factor... ");
     double fStart = omp_get_wtime();
-    for (unsigned long long i = 0; primeList[i] != 0; i++) {
-        if ( fmodl(product, primeList[i]) == 0.0 ) {
-            double end = omp_get_wtime();
-            printf("Done (%lf s)\n", end-fStart);
-            printf(">>>>> Primes found: %lld, %lld <<<<<\n", primeList[i], (product/primeList[i]));
-            printf("total run time: %lf", end-start);
-            return 0;
+
+    bool found = false;
+    unsigned long long i;
+    #pragma omp parallel shared(found) private (i)
+    {
+        int nthreads = omp_get_num_threads();
+        int tid = omp_get_thread_num();
+
+        for (i = (unsigned long long) tid; primeList[i] != 0 && !found; i+=nthreads) {
+            if ( fmodl(product, primeList[i]) == 0.0 ) {
+                double end = omp_get_wtime();
+                printf("Done (%lf s)\n", end-fStart);
+                printf(">>>>> Primes found: %lld, %lld <<<<<\n", primeList[i], (product/primeList[i]));
+                printf("total run time: %lf", end-start);
+                found = true;
+            }
         }
     }
-    printf("Prime factors not found.\n");
-    return 1;
+
+    if (found) return 0;
+    else {
+        printf("Prime factors not found.\n");
+        return 1;
+    }
 }
