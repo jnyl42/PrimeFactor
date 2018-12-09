@@ -12,14 +12,13 @@ unsigned long long * generatePrimes(long double max) {
     double start;
     double end;
     unsigned long long cap = ((unsigned long long) max) + 1;
-    printf("Cap of primes to generate: %lld \n", cap);
     printf("Initializing sieve array... ");
     start = omp_get_wtime();
     int * array = (int *)malloc(cap*sizeof(int));
     end = omp_get_wtime();
     printf("Done (%lf s)\n", end-start);
 
-    printf("<omp> Setting initial values... ");
+    printf("[OMP] Setting initial values... ");
     start = omp_get_wtime();
     //mark 0 and 1 as not prime
     array[0] = 1;
@@ -36,15 +35,21 @@ unsigned long long * generatePrimes(long double max) {
     end = omp_get_wtime();
     printf("Done (%lf s)\n", end-start);
 
-    printf("Sieving primes... ");
+    printf("[OMP] Sieving primes... ");
     start = omp_get_wtime();
     //for every array index that is still marked 1 for prime
     for (unsigned long long i = 2; (i < sqrtl(cap)); i++) {
         if (array[i] == 0) {
             //multiply the index number by consecutive integers and mark each product as not prime
-            for (unsigned long long j = 2; (i * j) < cap; j++) {
-                array[i * j] = 1;
+            #pragma omp parallel
+            {
+                int tid = omp_get_thread_num();
+                int nthreads = omp_get_num_threads();
+                for (unsigned long long j = (unsigned long long) tid + 2; (i * j) < cap; j+=nthreads) {
+                    array[i * j] = 1;
+                }
             }
+
         }
 
     }
@@ -99,7 +104,7 @@ int main(int argc, char** argv) {
     unsigned long long * primeList = generatePrimes(maxLower);
 
     //check each prime against product
-    printf("<omp> Attempting to factor... ");
+    printf("[OMP] Attempting to factor... ");
     double fStart = omp_get_wtime();
 
     bool found = false;
